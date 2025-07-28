@@ -11,16 +11,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-//use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\Writer\PngWriter;
-use Endroid\QrCode\Color\Color;
-use Endroid\QrCode\Builder\Builder;
-use Endroid\QrCode\Encoding\Encoding;
-use Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelLow;
-use Endroid\QrCode\RoundBlockSizeMode\RoundBlockSizeModeMargin;
+
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
+
 
 
 
@@ -30,11 +26,15 @@ class CardController extends Controller
 public function index(){
     $cards = Card::where('user_id', Auth::id())
                 ->where('is_active', true)
-                ->select(['id', 'name', 'company', 'position', 'email', 'phone', 'mobile', 'address', 'company_address', 'logo', 'qr_code'])
+                ->select(['id', 'name', 'company', 'position', 'email', 'phone', 'mobile', 'address', 'company_address', 'logo', 'qr_code','slug'])
                 ->orderBy('created_at', 'desc')
                     ->get();
 
-    
+ 
+                    
+    $cards->each(function ($card) {
+        $card->public_url = url("/api/public/card/{$card->slug}");
+    });
                     
     $this->logActivity(
     'viewed_cards', 
@@ -141,21 +141,27 @@ public function update(Request $request, Card $card){
 
     $validated = $validator->validated();
 
-    if ($request->hasFile('logo')){
-        if ($card->logo && Storage::disk('public')->exists($card->logo)){
+    // ✅ Handle logo upload (remove duplicate logic)
+    if ($request->hasFile('logo')) {
+        // Delete old logo if exists
+        if ($card->logo && Storage::disk('public')->exists($card->logo)) {
             Storage::disk('public')->delete($card->logo);
         }
-        $validated['logo'] = $request->file('logo')->store('logos', 'public');
+        
+        // Upload new logo with custom name
+        $logoFile = $request->file('logo');
+        $logoName = 'card-' . $card->id . '-logo.' . $logoFile->getClientOriginalExtension();
+        $logoPath = $logoFile->storeAs('logos', $logoName, 'public');
+        $validated['logo'] = $logoPath;
     }
 
+    // ✅ Update card with all validated data (including logo path)
     $card->update($validated);
-
-
+    
+    // ✅ Regenerate QR code
     $this->generateQrCode($card);
 
-
-
-        $this->logActivity(
+    $this->logActivity(
         'update_card', 
         $card, 
         $oldData, 
@@ -188,32 +194,38 @@ public function destroy(Card $card){
 }
 
 private function generateQrCode(Card $card){
-
-        $cardUrl = url("/card/{$card->slug}");
-
     try {
-
-        $qrCode = QrCode::create($cardUrl)
-            ->setEncoding(new Encoding('UTF-8'))
-            ->setErrorCorrectionLevel(new ErrorCorrectionLevelLow())
-            ->setSize(300)
-            ->setMargin(10)
-            ->setRoundBlockSizeMode(new RoundBlockSizeModeMargin());
-
-        $writer = new PngWriter();
-        $result = $writer->write($qrCode);
+        $cardUrl = url("/api/public/card/{$card->slug}");
+        Log::info("🔄 Generating QR code for card {$card->id} with URL: {$cardUrl}");
         
-        $filename = "qr-codes/card-{$card->id}.png";
+        // ✅ Generate QR code content
+        $qrCodeContent = QrCode::format('svg')
+            ->size(300)
+            ->margin(2)
+            ->generate($cardUrl);
         
-        Storage::disk('public')->put($filename, $result->getString());
+        Log::info("✅ QR code generated: " . strlen($qrCodeContent) . " bytes");
         
-        $card->update(['qr_code' => $filename]);
+        // ✅ Create filename
+        $filename = "qr-codes/card-{$card->id}.svg";
         
-    }  
-
-    catch (\Exception $e) {
-        Log::error("QR code generation failed for card {$card->id}: " . $e->getMessage());
+        // ✅ Use Laravel Storage for proper path handling
+        Storage::disk('public')->makeDirectory('qr-codes');
+        
+        // ✅ Save QR code
+        $saved = Storage::disk('public')->put($filename, $qrCodeContent);
+        
+        if ($saved) {
+            // ✅ Update card record
+            $card->update(['qr_code' => $filename]);
+            Log::info("✅ QR code saved successfully: {$filename}");
+        } else {
+            Log::error("❌ Failed to save QR code file");
+        }
+        
+    } catch (\Exception $e) {
+        Log::error("❌ QR code generation failed for card {$card->id}: " . $e->getMessage());
+        Log::error("❌ Stack trace: " . $e->getTraceAsString());
     }
 }
-
 }

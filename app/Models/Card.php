@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
+
 
 class Card extends Model
 {
@@ -35,6 +37,45 @@ class Card extends Model
     /**
      * Get the user that owns the card
      */
+
+
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($card) {
+            if (empty($card->slug)) {
+                $card->slug = static::generateUniqueSlug($card->name);
+            }
+        });
+        
+        static::updating(function ($card) {
+            if ($card->isDirty('name') && empty($card->slug)) {
+                $card->slug = static::generateUniqueSlug($card->name);
+            }
+        });
+    }
+
+    public static function generateUniqueSlug($name)
+    {
+        $baseSlug = Str::slug($name);
+        $slug = $baseSlug . '-' . time();
+        $counter = 1;
+        
+        while (static::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . time() . '-' . $counter;
+            $counter++;
+        }
+        
+        return $slug;
+    }
+
+        public function getRouteKeyName()
+    {
+        return 'slug';
+    }
+
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -43,18 +84,26 @@ class Card extends Model
     /**
      * Get the QR code URL
      */
-    public function getQrCodeUrlAttribute(): string
+    public function getQrCodeUrlAttribute(): ?string
     {
-        return url('/qr/' . $this->id);
+        return $this->qr_code ? url("/storage/{$this->qr_code}") : null;
     }
 
     /**
-     * Get the card public URL
+     * Get the card URL
      */
     public function getPublicUrlAttribute(): string
     {
-        return url('/card/' . $this->id);
+        return url("/api/public/card/{$this->slug}");
     }
+    /**
+     * Get the logo public URL
+     */
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->logo ? url("/storage/{$this->logo}") : null;
+    }   
+    protected $appends = ['public_url', 'qr_code_url', 'logo_url'];
 
     /**
      * Scope for active cards

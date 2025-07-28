@@ -98,7 +98,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string|min:8|max:255',
             'new_password' => 'required|string|min:8|max:255|confirmed|different:current_password',
-            'new_password_confirmation' => 'required|string|min:8|max:255|new_password'
+            'new_password_confirmation' => 'required|string|min:8|max:255'
         ]);
 
         if ($validator->fails()) {

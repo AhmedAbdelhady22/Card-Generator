@@ -160,7 +160,7 @@ class AuthController extends Controller
             return $this->errorResponse('User not authenticated', 401);
         }
 
-        $request->user()->currentAccessToken()->destroy();
+        $request->user()->currentAccessToken()->delete();
 
         $this->logActivity(
             'logout',
