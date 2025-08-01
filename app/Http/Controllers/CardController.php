@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -23,7 +24,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class CardController extends Controller
 {
-public function index(){
+public function index(Request $request){
     $cards = Card::where('user_id', Auth::id())
                 ->where('is_active', true)
                 ->select(['id', 'name', 'company', 'position', 'email', 'phone', 'mobile', 'address', 'company_address', 'logo', 'qr_code','slug'])
@@ -44,7 +45,12 @@ public function index(){
     'User viewed their cards'
 
 );
-    return $this->successResponse($cards, 'Cards retrieved successfully');   
+
+    if ($request->expectsJson()) {
+        return $this->successResponse($cards, 'Cards retrieved successfully');   
+    } else {
+        return view('cards.index', compact('cards'));
+    }
 }
 
 
@@ -59,17 +65,40 @@ public function store(Request $request){
         'address' => 'nullable|string|max:500',
         'company_address' => 'nullable|string|max:500',
         'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+    ], [
+        'logo.image' => 'The logo must be an image file.',
+        'logo.mimes' => 'The logo must be a file of type: jpeg, png, jpg, gif, svg.',
+        'logo.max' => 'The logo may not be greater than 2MB.',
     ]);
 
     if ($validator->fails()) {
-        return $this->errorResponse('Validation failed', 422, $validator->errors());
+        if ($request->expectsJson()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        } else {
+            return back()->withErrors($validator)->withInput();
+        }
     }
 
     $validated = $validator->validated();
 
     $logoPath = null;
     if ($request->hasFile('logo')) {
-        $logoPath = $request->file('logo')->store('logos', 'public');
+        $logoFile = $request->file('logo');
+        
+        // Debug information
+        Log::info('Logo upload attempt:', [
+            'original_name' => $logoFile->getClientOriginalName(),
+            'mime_type' => $logoFile->getClientMimeType(),
+            'size' => $logoFile->getSize(),
+            'is_valid' => $logoFile->isValid()
+        ]);
+        
+        if ($logoFile->isValid()) {
+            $logoPath = $logoFile->store('logos', 'public');
+            Log::info('Logo stored successfully:', ['path' => $logoPath]);
+        } else {
+            Log::error('Logo file is not valid');
+        }
     }    
 
     $cardData = array_merge($validated, [
@@ -90,11 +119,15 @@ public function store(Request $request){
         "User created a new card: {$card->name}"
     );
 
+    if ($request->expectsJson()) {
         return $this->successResponse(
-        $card->fresh(),
-        'Business card created successfully', 
-        201
-    );
+            $card->fresh(),
+            'Business card created successfully', 
+            201
+        );
+    } else {
+        return redirect()->route('cards.index')->with('success', 'Card created successfully!');
+    }
 }
 
 
@@ -116,9 +149,22 @@ public function show(Card $card){
 }
 
 
-public function update(Request $request, Card $card){
-    if ($card->user_id !== Auth::id()){
-        return $this->errorResponse('Unauthorized', 403);
+public function update(Request $request, $cardId){
+    // Find the card manually
+    $card = Card::find($cardId);
+    
+    if (!$card) {
+        if ($request->expectsJson()) {
+            return response()->json(['error' => 'Card not found'], 404);
+        }
+        return redirect()->route('cards.index')->with('error', 'Card not found');
+    }
+    
+    if ($card->user_id !== Auth::id()) {
+        if ($request->expectsJson()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        return redirect()->route('cards.index')->with('error', 'Unauthorized');
     }
 
     $oldData = $card->toArray();
@@ -130,35 +176,37 @@ public function update(Request $request, Card $card){
         'email' => 'required|email|max:255',
         'phone' => 'nullable|string|max:20',
         'mobile' => 'nullable|string|max:20',
+        'website' => 'nullable|url|max:255',
         'address' => 'nullable|string|max:500',
         'company_address' => 'nullable|string|max:500',
         'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
     ]);
 
     if ($validator->fails()) {
-        return $this->errorResponse('Validation failed', 422, $validator->errors());
+        if ($request->expectsJson()) {
+            return response()->json(['error' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        }
+        return redirect()->back()->withErrors($validator)->withInput();
     }
 
     $validated = $validator->validated();
 
-    // ✅ Handle logo upload (remove duplicate logic)
+    // Handle logo upload
     if ($request->hasFile('logo')) {
         // Delete old logo if exists
         if ($card->logo && Storage::disk('public')->exists($card->logo)) {
             Storage::disk('public')->delete($card->logo);
         }
         
-        // Upload new logo with custom name
-        $logoFile = $request->file('logo');
-        $logoName = 'card-' . $card->id . '-logo.' . $logoFile->getClientOriginalExtension();
-        $logoPath = $logoFile->storeAs('logos', $logoName, 'public');
+        // Upload new logo
+        $logoPath = $request->file('logo')->store('logos', 'public');
         $validated['logo'] = $logoPath;
     }
 
-    // ✅ Update card with all validated data (including logo path)
+    // Update card with all validated data
     $card->update($validated);
     
-    // ✅ Regenerate QR code
+    // Regenerate QR code
     $this->generateQrCode($card);
 
     $this->logActivity(
@@ -169,28 +217,58 @@ public function update(Request $request, Card $card){
         "Updated card: {$card->name}"
     );
 
-    return $this->successResponse($card->fresh(), 'Card updated successfully');
+    if ($request->expectsJson()) {
+        return response()->json(['message' => 'Card updated successfully', 'card' => $card->fresh()]);
+    }
+    
+    return redirect()->route('cards.index')->with('success', 'Card updated successfully');
 }
 
 
-public function destroy(Card $card){
+public function destroy(Request $request, $cardId){
+    // Find the card manually
+    $card = Card::find($cardId);
+    
+    if (!$card) {
+        if ($request->expectsJson()) {
+            return response()->json(['error' => 'Card not found'], 404);
+        }
+        return redirect()->route('cards.index')->with('error', 'Card not found');
+    }
+    
     if ($card->user_id !== Auth::id()) {
-        return $this->errorResponse('Unauthorized', 403);
+        if ($request->expectsJson()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        return redirect()->route('cards.index')->with('error', 'Unauthorized');
     }
 
     $oldData = $card->toArray();
+    $cardName = $card->name;
+    
+    // Delete associated files
+    if ($card->logo) {
+        Storage::disk('public')->delete($card->logo);
+    }
+    if ($card->qr_code) {
+        Storage::disk('public')->delete($card->qr_code);
+    }
+    
     $card->delete();
 
-
-        $this->logActivity(
+    $this->logActivity(
         'delete_card', 
         $card, 
         $oldData, 
         null, 
-        "Deleted business card: {$card->name}"
+        "Deleted business card: {$cardName}"
     );
 
-    return $this->successResponse(null, 'Card deleted successfully');
+    if ($request->expectsJson()) {
+        return response()->json(['message' => 'Card deleted successfully']);
+    }
+    
+    return redirect()->route('cards.index')->with('success', 'Card deleted successfully');
 }
 
 private function generateQrCode(Card $card){
@@ -226,6 +304,155 @@ private function generateQrCode(Card $card){
     } catch (\Exception $e) {
         Log::error("❌ QR code generation failed for card {$card->id}: " . $e->getMessage());
         Log::error("❌ Stack trace: " . $e->getTraceAsString());
+    }
+}
+
+/**
+ * Generate and download PDF for a business card
+ */
+public function downloadPdf($cardId)
+{
+    // Find the card and ensure it belongs to the authenticated user
+    $card = Card::where('id', $cardId)
+                ->where('user_id', Auth::id())
+                ->first();
+
+    if (!$card) {
+        if (request()->expectsJson()) {
+            return $this->errorResponse('Card not found or unauthorized access', 404);
+        }
+        return redirect()->route('cards.index')->with('error', 'Card not found or unauthorized access.');
+    }
+
+    try {
+        // Log the PDF generation activity
+        $this->logActivity(
+            'pdf_generated',
+            $card,
+            null,
+            ['card_name' => $card->name],
+            'User generated PDF for card: ' . $card->name
+        );
+
+        // Set longer timeout for PDF generation
+        ini_set('max_execution_time', 120);
+
+        // Generate PDF from the card data
+        $pdf = Pdf::loadView('cards.pdf', compact('card'))
+                  ->setPaper('a4', 'portrait')
+                  ->setOptions([
+                      'isHtml5ParserEnabled' => true,
+                      'isRemoteEnabled' => false, // Disable remote content for security
+                      'defaultFont' => 'DejaVu Sans', // Use a font that supports Unicode
+                      'dpi' => 150,
+                      'debugPng' => false,
+                      'debugKeepTemp' => false,
+                      'debugCss' => false,
+                      'enable_php' => true
+                  ]);
+
+        // Generate filename
+        $filename = Str::slug($card->name . '-' . $card->company) . '-business-card.pdf';
+
+        return $pdf->download($filename);
+
+    } catch (\Exception $e) {
+        Log::error("PDF generation failed for card {$card->id}: " . $e->getMessage());
+        Log::error("Stack trace: " . $e->getTraceAsString());
+        
+        if (request()->expectsJson()) {
+            return $this->errorResponse('Failed to generate PDF: ' . $e->getMessage(), 500);
+        }
+        
+        return redirect()->back()->with('error', 'Failed to generate PDF. Please try again.');
+    }
+}
+
+/**
+ * Preview PDF for a business card
+ */
+public function previewPdf($cardId)
+{
+    // Find the card and ensure it belongs to the authenticated user
+    $card = Card::where('id', $cardId)
+                ->where('user_id', Auth::id())
+                ->first();
+
+    if (!$card) {
+        if (request()->expectsJson()) {
+            return $this->errorResponse('Card not found or unauthorized access', 404);
+        }
+        return redirect()->route('cards.index')->with('error', 'Card not found or unauthorized access.');
+    }
+
+    try {
+        // Log the PDF preview activity
+        $this->logActivity(
+            'pdf_previewed',
+            $card,
+            null,
+            ['card_name' => $card->name],
+            'User previewed PDF for card: ' . $card->name
+        );
+
+        // Set longer timeout for PDF generation
+        ini_set('max_execution_time', 120);
+
+        // Generate PDF and stream it to browser
+        $pdf = Pdf::loadView('cards.pdf', compact('card'))
+                  ->setPaper('a4', 'portrait')
+                  ->setOptions([
+                      'isHtml5ParserEnabled' => true,
+                      'isRemoteEnabled' => false, // Disable remote content for security
+                      'defaultFont' => 'DejaVu Sans', // Use a font that supports Unicode
+                      'dpi' => 150,
+                      'debugPng' => false,
+                      'debugKeepTemp' => false,
+                      'debugCss' => false,
+                      'enable_php' => true
+                  ]);
+
+        return $pdf->stream('business-card-preview.pdf');
+
+    } catch (\Exception $e) {
+        Log::error("PDF preview failed for card {$card->id}: " . $e->getMessage());
+        Log::error("Stack trace: " . $e->getTraceAsString());
+        
+        if (request()->expectsJson()) {
+            return $this->errorResponse('Failed to preview PDF: ' . $e->getMessage(), 500);
+        }
+        
+        return redirect()->back()->with('error', 'Failed to preview PDF. Please try again.');
+    }
+}
+
+/**
+ * Helper method to safely convert image to base64
+ */
+private function getImageAsBase64($imagePath)
+{
+    try {
+        if (!$imagePath || !file_exists($imagePath)) {
+            return null;
+        }
+
+        $imageData = file_get_contents($imagePath);
+        if ($imageData === false) {
+            return null;
+        }
+
+        $mimeType = mime_content_type($imagePath);
+        if (!$mimeType || !in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'])) {
+            return null;
+        }
+
+        return [
+            'data' => base64_encode($imageData),
+            'mime' => $mimeType
+        ];
+    } catch (\Exception $e) {
+        Log::error("Image conversion failed for: {$imagePath} - " . $e->getMessage());
+        return null;
     }
 }
 }

@@ -1,0 +1,53 @@
+
+
+/* Hero section styling */
+
+#hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10rem 0;
+    border: none;
+    border-radius: 15px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-btn {
+    text-align: center;
+    justify-content: center;
+    color: white;
+    background: linear-gradient(135deg, #523470 0%, #36437e 100%);
+    max-width: 50%;
+}
+
+.hero-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+
+/* Responsive hero adjustments */
+@media (max-width: 768px) {
+    #hero{
+        padding: 3rem 0;
+    }
+    
+    #hero {
+        font-size: 2.5rem;
+    }
+    
+    #hero {
+        font-size: 1.1rem;
+    }
+    
+    #hero {
+        margin-bottom: 1.5rem;
+    }
+    .hero-btn {
+        text-align: center;
+        justify-content: center;
+        margin: 0 auto;
+        max-width: 75%;
+    }
+}

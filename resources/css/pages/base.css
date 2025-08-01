@@ -1,0 +1,52 @@
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    padding: 0;
+    transition: all 0.3s ease;
+}
+
+/* Professional spacing */
+.mt-5 {
+    margin-top: 3rem !important;
+}
+
+/* QR Code container styling */
+.bg-gradient {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%) !important;
+}
+
+/* Icon wrapper enhanced */
+.icon-wrapper {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+}
+
+/* Card styling enhancements */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Print Styles */
+@media print {
+    .welcome-header {
+        background: #f8f9fa !important;
+        color: #333 !important;
+    }
+    
+    .stat-card {
+        border: 1px solid #dee2e6 !important;
+        background: #fff !important;
+        color: #333 !important;
+    }
+}

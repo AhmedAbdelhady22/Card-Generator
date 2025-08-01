@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Carbon\Carbon;
 
 class UserController extends Controller
 {
@@ -168,6 +169,90 @@ class UserController extends Controller
 
         return $this->successResponse(null, 'Account deleted successfully');
 
+    }
+
+    /**
+     * Display the user dashboard
+     */
+    public function dashboard()
+    {
+        $user = Auth::user();
+        
+        // Get user's cards
+        $cards = Card::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        // Dashboard statistics
+        $stats = [
+            'total_cards' => $cards->count(),
+            'active_cards' => $cards->where('is_active', true)->count(),
+            'inactive_cards' => $cards->where('is_active', false)->count(),
+            'cards_this_month' => $cards->where('created_at', '>=', Carbon::now()->startOfMonth())->count(),
+        ];
+        
+        // Recent cards (last 3)
+        $recentCards = $cards->take(3);
+        
+        // Recent activity logs for this user
+        $recentActivity = ActivityLog::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+        
+        // Card creation trend (last 6 months)
+        $cardTrend = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = Carbon::now()->subMonths($i);
+            $count = $cards->where('created_at', '>=', $month->startOfMonth())
+                          ->where('created_at', '<=', $month->endOfMonth())
+                          ->count();
+            $cardTrend[] = [
+                'month' => $month->format('M Y'),
+                'count' => $count
+            ];
+        }
+
+        // Log dashboard view activity
+        $this->logActivity(
+            'dashboard_viewed',
+            $user,
+            null,
+            ['stats' => $stats],
+            'User viewed dashboard'
+        );
+        
+        return view('auth.dashboard', compact('user', 'cards', 'stats', 'recentCards', 'recentActivity', 'cardTrend'));
+    }
+    
+    /**
+     * Get dashboard data via API
+     */
+    public function getDashboardData()
+    {
+        $user = Auth::user();
+        
+        $cards = Card::where('user_id', $user->id)->get();
+        
+        $stats = [
+            'total_cards' => $cards->count(),
+            'active_cards' => $cards->where('is_active', true)->count(),
+            'inactive_cards' => $cards->where('is_active', false)->count(),
+            'cards_this_month' => $cards->where('created_at', '>=', Carbon::now()->startOfMonth())->count(),
+        ];
+
+        $this->logActivity(
+            'dashboard_api_accessed',
+            $user,
+            null,
+            ['stats' => $stats],
+            'User accessed dashboard data via API'
+        );
+        
+        return $this->successResponse([
+            'stats' => $stats,
+            'cards' => $cards
+        ], 'Dashboard data retrieved successfully');
     }
 
 

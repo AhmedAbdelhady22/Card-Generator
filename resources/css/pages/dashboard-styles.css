@@ -1,0 +1,96 @@
+/* ============================================
+   DASHBOARD STYLES
+   ============================================ */
+
+/* Dashboard Specific Styles */
+.welcome-header {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%) !important;
+    animation: slideInDown 0.8s ease-out;
+}
+
+.stat-card {
+    transition: all 0.3s ease;
+    animation: slideInUp 0.6s ease-out;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+    transform: scale(1.1);
+}
+
+.trend-indicator {
+    animation: pulse 2s infinite;
+}
+
+.mini-card {
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+.hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.activity-timeline {
+    position: relative;
+}
+
+.activity-item {
+    position: relative;
+    padding-left: 0;
+}
+
+.activity-icon {
+    position: relative;
+    z-index: 2;
+}
+
+.activity-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 40px;
+    width: 2px;
+    height: calc(100% - 10px);
+    background: rgba(13, 110, 253, 0.2);
+    z-index: 1;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* Stagger animations for stat cards */
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* Responsive Dashboard */
+@media (max-width: 768px) {
+    .welcome-header {
+        text-align: center;
+    }
+    
+    .welcome-header .d-flex {
+        flex-direction: column;
+    }
+    
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+}

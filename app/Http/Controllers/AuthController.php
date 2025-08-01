@@ -25,13 +25,21 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()){
-            return $this->errorResponse('Validation failed', 422, $validator->errors());
+            if ($request->expectsJson()) {
+                return $this->errorResponse('Validation failed', 422, $validator->errors());
+            } else {
+                return back()->withErrors($validator)->withInput();
+            }
         }
 
         $user = User::where('email', $request->email)->first();
 
         if(!$user){
-            return $this->errorResponse('User not found', 401, );
+            if ($request->expectsJson()) {
+                return $this->errorResponse('User not found', 401);
+            } else {
+                return back()->withErrors(['email' => 'These credentials do not match our records.'])->withInput();
+            }
         }
 
         if(!Hash::check($request->password, $user->password)){
@@ -42,7 +50,11 @@ class AuthController extends Controller
                 null,
                 'User attempted to login with incorrect password'
             );
-            return $this->errorResponse('Wrong password', 401);
+            if ($request->expectsJson()) {
+                return $this->errorResponse('Wrong password', 401);
+            } else {
+                return back()->withErrors(['email' => 'These credentials do not match our records.'])->withInput();
+            }
         }
 
         if(!$user->is_active){
@@ -53,13 +65,20 @@ class AuthController extends Controller
                 ['reason' => 'account_inactive'],
                 'login attempt while account is inactive'
             );
-            return $this->errorResponse('Account is inactive', 403);
+            if ($request->expectsJson()) {
+                return $this->errorResponse('Account is inactive', 403);
+            } else {
+                return back()->withErrors(['email' => 'Your account is inactive. Please contact support.'])->withInput();
+            }
         }
 
         $user->update([
             'last_login_at' => now(),
             'last_login_ip' => $request->ip()
         ]);
+
+        // Log the user in for web sessions
+        Auth::login($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -73,11 +92,15 @@ class AuthController extends Controller
 
         $userData = $user->load(['role.permissions']);
 
-        return $this->successResponse([
-        'user' => $userData,
-        'token' => $token,
-        'token_type' => 'Bearer'
-    ], 'Login successful');
+        if ($request->expectsJson()) {
+            return $this->successResponse([
+                'user' => $userData,
+                'token' => $token,
+                'token_type' => 'Bearer'
+            ], 'Login successful');
+        } else {
+            return redirect()->route('dashboard');
+        }
 
     }   
     
@@ -96,7 +119,11 @@ class AuthController extends Controller
         ]);
 
         if($validator->fails()){
-            return $this->errorResponse('Registration failde', 422, $validator->errors());
+            if ($request->expectsJson()) {
+                return $this->errorResponse('Registration failed', 422, $validator->errors());
+            } else {
+                return back()->withErrors($validator)->withInput();
+            }
         }
         $validated = $validator->validate();
 
@@ -120,6 +147,9 @@ class AuthController extends Controller
                 'email_verified_at' => now()
             ]);
 
+            // Auto-login the user for web sessions
+            Auth::login($user);
+
             $token = $user->createToken('auth-token')->plainTextToken;
             $userData = $user->load(['role.permissions']);
 
@@ -135,17 +165,25 @@ class AuthController extends Controller
                 'New user registered'
             );
 
-            return $this->successResponse([
-            'user' => $userData,
-            'token' => $token,
-            'token_type' => 'Bearer'
-        ], 'Registration successful', 201);
+            if ($request->expectsJson()) {
+                return $this->successResponse([
+                    'user' => $userData,
+                    'token' => $token,
+                    'token_type' => 'Bearer'
+                ], 'Registration successful', 201);
+            } else {
+                return redirect()->route('dashboard')->with('success', 'Registration successful! Welcome!');
+            }
 
     } catch(Exception $e){
 
         Log::error('User registration failed: ' . $e->getMessage());
 
-        return $this->errorResponse('User registration failed', 500);
+        if ($request->expectsJson()) {
+            return $this->errorResponse('User registration failed', 500);
+        } else {
+            return back()->withErrors(['error' => 'Registration failed. Please try again.'])->withInput();
+        }
         }
 
 
@@ -157,11 +195,14 @@ class AuthController extends Controller
         $user = Auth::user();
 
         if(!$user) {
-            return $this->errorResponse('User not authenticated', 401);
+            if ($request->expectsJson()) {
+                return $this->errorResponse('User not authenticated', 401);
+            } else {
+                return redirect()->route('login');
+            }
         }
 
-        $request->user()->currentAccessToken()->delete();
-
+        // Log activity before logout
         $this->logActivity(
             'logout',
             $user,
@@ -170,9 +211,18 @@ class AuthController extends Controller
             'User logout'
         );
 
-        return $this->successResponse(null, 'Logged out successfully');
-
-
+        if ($request->expectsJson()) {
+            // For API requests, delete the token
+            $request->user()->currentAccessToken()->delete();
+            return $this->successResponse(null, 'Logged out successfully');
+        } else {
+            // For web requests, logout from session
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            
+            return redirect()->route('home')->with('success', 'You have been logged out successfully.');
+        }
     }
 
 

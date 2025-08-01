@@ -11,7 +11,9 @@ use App\Http\Controllers\ActivityLogController;
 
 
 
-
+Route::get('/test', function () {
+    return response()->json(['message' => 'Routes are working!']);
+});
 
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -21,10 +23,6 @@ Route::prefix('auth')->group(function () {
 
 Route::prefix('public')->group(function () {
     Route::get('/card/{slug}', [PublicController::class, 'displayCard']);
-});
-
-Route::get('/test', function () {
-    return response()->json(['message' => 'Routes are working!']);
 });
 
 

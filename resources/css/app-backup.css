@@ -1,4 +1,10 @@
+@import 'bootstrap';
 
+/* ============================================
+   CARD GENERATOR - ORGANIZED CSS IMPORTS
+   ============================================ */
+
+/* Import organized CSS files by page groups */
 @import './pages/base.css';
 @import './pages/navigation.css';
 @import './pages/forms.css';
@@ -10,6 +16,42 @@
 @import './pages/animations.css';
 @import './pages/responsive.css';
 
+/* ============================================
+   ADDITIONAL STYLES
+   ============================================ */
+
+/* Button styling */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+.btn-outline-primary {
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.btn-outline-primary:hover {
+    background: #667eea;
+    border-color: #667eea;
+    transform: scale(1.05);
+}
 
 /* Custom card styling */
 .custom-card {

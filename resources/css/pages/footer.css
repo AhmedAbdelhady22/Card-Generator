@@ -1,0 +1,12 @@
+/* ============================================
+   FOOTER STYLES
+   ============================================ */
+
+/* Footer Styles */
+.footer {
+    background-color: #343a40; /* Clean: Dark background */
+    color: #343a40; /* Professional: High contrast */
+    font-weight: 500; /* Professional: Clear typography */
+    padding: 20px; /* User-friendly: Comfortable spacing */
+    text-align: center; /* Clean: Centered text */
+}
