@@ -171,9 +171,6 @@ class UserController extends Controller
 
     }
 
-    /**
-     * Display the user dashboard
-     */
     public function dashboard()
     {
         $user = Auth::user();
@@ -224,10 +221,7 @@ class UserController extends Controller
         
         return view('auth.dashboard', compact('user', 'cards', 'stats', 'recentCards', 'recentActivity', 'cardTrend'));
     }
-    
-    /**
-     * Get dashboard data via API
-     */
+
     public function getDashboardData()
     {
         $user = Auth::user();

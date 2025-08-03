@@ -25,7 +25,7 @@ Route::post('/api/user/change-password', [UserController::class, 'changePassword
 Route::get('/api/user/cards', [UserController::class, 'getUserCards'])->name('user.cards')->middleware('auth');
 Route::delete('/api/user/account', [UserController::class, 'deleteAccount'])->name('user.delete-account')->middleware('auth');
 
-//show all cards
+//show al cards
 Route::get('/cards', [CardController::class, 'index'])->name('cards.index')->middleware('auth');
 
 //show create card form
