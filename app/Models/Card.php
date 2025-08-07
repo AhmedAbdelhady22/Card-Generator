@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Str;
 
 
@@ -119,5 +122,121 @@ class Card extends Model
     public function scopeByUser($query, $userId)
     {
         return $query->where('user_id', $userId);
+    }
+
+    // ✅ MOVE: QR code generation to model
+    public function generateQrCode(): void
+    {
+        try {
+            $cardUrl = $this->public_url;
+            Log::info("🔄 Generating QR code for card {$this->id} with URL: {$cardUrl}");
+            
+            $qrCodeContent = QrCode::format('svg')
+                ->size(300)
+                ->margin(2)
+                ->generate($cardUrl);
+            
+            $filename = "qr-codes/card-{$this->id}.svg";
+            
+            Storage::disk('public')->makeDirectory('qr-codes');
+            
+            $saved = Storage::disk('public')->put($filename, $qrCodeContent);
+            
+            if ($saved) {
+                $this->update(['qr_code' => $filename]);
+                Log::info("✅ QR code saved successfully: {$filename}");
+            }
+            
+        } catch (\Exception $e) {
+            Log::error("❌ QR code generation failed for card {$this->id}: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    // ✅ MOVE: File upload logic to model
+    public function uploadLogo($logoFile): ?string
+    {
+        if (!$logoFile || !$logoFile->isValid()) {
+            return null;
+        }
+
+        // Delete old logo if exists
+        if ($this->logo && Storage::disk('public')->exists($this->logo)) {
+            Storage::disk('public')->delete($this->logo);
+        }
+
+        Log::info('Logo upload attempt:', [
+            'original_name' => $logoFile->getClientOriginalName(),
+            'mime_type' => $logoFile->getClientMimeType(),
+            'size' => $logoFile->getSize(),
+        ]);
+
+        $logoPath = $logoFile->store('logos', 'public');
+        
+        $this->update(['logo' => $logoPath]);
+        
+        Log::info('Logo stored successfully:', ['path' => $logoPath]);
+        
+        return $logoPath;
+    }
+
+    // ✅ MOVE: Generate PDF data to model
+    public function getPdfData(): array
+    {
+        return [
+            'card' => $this,
+            'qr_code_path' => $this->qr_code ? storage_path('app/public/' . $this->qr_code) : null,
+            'logo_path' => $this->logo ? storage_path('app/public/' . $this->logo) : null,
+        ];
+    }
+
+    // ✅ MOVE: Delete related files to model
+    public function deleteFiles(): void
+    {
+        if ($this->logo) {
+            Storage::disk('public')->delete($this->logo);
+        }
+        if ($this->qr_code) {
+            Storage::disk('public')->delete($this->qr_code);
+        }
+    }
+
+    // ✅ MOVE: Card creation logic to model
+    public static function createWithQrCode(array $data): self
+    {
+        $card = self::create($data);
+        $card->generateQrCode();
+        return $card;
+    }
+
+    // ADMIN MANAGEMENT METHODS
+    public function deleteByAdmin(): bool
+    {
+        try {
+            // Delete files first
+            $this->deleteFiles();
+            
+            // Delete the card
+            return $this->delete();
+        } catch (\Exception $e) {
+            Log::error('Error deleting card by admin: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public static function getAdminCardsList()
+    {
+        return self::with('user')->latest()->paginate(15);
+    }
+
+    // QUERY SCOPES (Add to existing)
+    public function scopeThisMonth($query)
+    {
+        return $query->whereMonth('created_at', now()->month);
+    }
+
+    public function scopeWithUser($query)
+    {
+        return $query->with('user:id,name,email');
     }
 }

@@ -4,23 +4,21 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 use App\Models\Card;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Models\ActivityLog;
-use Carbon\Carbon;
 
 class AdminController extends Controller
 {
     public function __construct()
     {
+        $user = User::find(Auth::id());
         $this->middleware('auth');
-        $this->middleware(function ($request, $next) {
-            $user = Auth::user();
-            if (!$user->role || $user->role->name !== 'admin') {
+        $this->middleware(function ($request, $next) use ($user) {
+            if (!$user->isAdmin()) {
                 abort(403, 'Unauthorized access');
             }
             return $next($request);
@@ -34,16 +32,7 @@ class AdminController extends Controller
     {
         $this->logActivity('viewed', null, null, null, 'Admin viewed dashboard');
 
-        $stats = [
-            'total_users' => User::count(),
-            'total_cards' => Card::count(),
-            'total_admins' => User::whereHas('role', function($q) {
-                $q->where('name', 'admin');
-            })->count(),
-            'recent_activities' => ActivityLog::with('user')->latest()->take(10)->get(),
-            'users_this_month' => User::whereMonth('created_at', now()->month)->count(),
-            'cards_this_month' => Card::whereMonth('created_at', now()->month)->count(),
-        ];
+        $stats = User::getAdminStats();
 
         return view('admin.dashboard', compact('stats'));
     }
@@ -55,7 +44,7 @@ class AdminController extends Controller
     {
         $this->logActivity('viewed', null, null, null, 'Admin viewed users management');
 
-        $users = User::with('role')->paginate(15);
+        $users = User::withRoleAndCards()->paginate(15);
         $roles = Role::all();
         
         return view('admin.users.index', compact('users', 'roles'));
@@ -87,10 +76,10 @@ class AdminController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
-        $user = User::create([
+        $user = User::createAdminUser([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'password' => $request->password,
             'role_id' => $request->role_id,
             'is_active' => $request->has('is_active'),
         ]);
@@ -128,18 +117,13 @@ class AdminController extends Controller
 
         $oldData = $user->toArray();
 
-        $updateData = [
+        $user->updateByAdmin([
             'name' => $request->name,
             'email' => $request->email,
+            'password' => $request->password,
             'role_id' => $request->role_id,
             'is_active' => $request->has('is_active'),
-        ];
-
-        if ($request->password) {
-            $updateData['password'] = Hash::make($request->password);
-        }
-
-        $user->update($updateData);
+        ]);
 
         $this->logActivity('updated', $user, $oldData, $user->fresh()->toArray(), "Admin updated user: {$user->name}");
 
@@ -151,13 +135,18 @@ class AdminController extends Controller
      */
     public function deleteUser(User $user)
     {
-        if ($user->id === Auth::id()) {
+        if (!$user->canBeDeletedByAdmin(Auth::id())) {
             return back()->with('error', 'You cannot delete your own account!');
         }
 
         $userName = $user->name;
         $oldData = $user->toArray();
-        $user->delete();
+        
+        $success = $user->deleteByAdmin();
+
+        if (!$success) {
+            return back()->with('error', 'Failed to delete user!');
+        }
 
         $this->logActivity('deleted', null, $oldData, null, "Admin deleted user: {$userName}");
 
@@ -169,13 +158,10 @@ class AdminController extends Controller
      */
     public function toggleUserStatus(User $user)
     {
-        $oldStatus = $user->is_active;
         $oldData = $user->toArray();
         
-        $user->is_active = !$user->is_active;
-        $user->save();
+        $status = $user->toggleStatus();
 
-        $status = $user->is_active ? 'activated' : 'deactivated';
         $this->logActivity('updated', $user, $oldData, $user->fresh()->toArray(), "Admin {$status} user: {$user->name}");
 
         return back()->with('success', "User {$status} successfully!");
@@ -188,7 +174,8 @@ class AdminController extends Controller
     {
         $this->logActivity('viewed', null, null, null, 'Admin viewed cards management');
 
-        $cards = Card::with('user')->paginate(15);
+        $cards = Card::getAdminCardsList();
+        
         return view('admin.cards.index', compact('cards'));
     }
 
@@ -199,7 +186,12 @@ class AdminController extends Controller
     {
         $cardName = $card->name;
         $oldData = $card->toArray();
-        $card->delete();
+        
+        $success = $card->deleteByAdmin();
+
+        if (!$success) {
+            return back()->with('error', 'Failed to delete card!');
+        }
 
         $this->logActivity('deleted', null, $oldData, null, "Admin deleted card: {$cardName}");
 
@@ -213,7 +205,7 @@ class AdminController extends Controller
     {
         $this->logActivity('viewed', null, null, null, 'Admin viewed permissions management');
 
-        $roles = Role::with('permissions')->get();
+        $roles = Role::getAllWithPermissions();
         $permissions = Permission::all();
         
         return view('admin.permissions.index', compact('roles', 'permissions'));
@@ -229,12 +221,16 @@ class AdminController extends Controller
             'permissions.*' => 'exists:permissions,id',
         ]);
 
-        $oldPermissions = $role->permissions->pluck('id')->toArray();
+        $oldPermissions = $role->getPermissionIds();
         $oldData = ['permissions' => $oldPermissions];
         
-        $role->permissions()->sync($request->permissions ?? []);
+        $success = $role->updatePermissions($request->permissions ?? []);
 
-        $newPermissions = $role->fresh()->permissions->pluck('id')->toArray();
+        if (!$success) {
+            return back()->with('error', 'Failed to update permissions!');
+        }
+
+        $newPermissions = $role->fresh()->getPermissionIds();
         $newData = ['permissions' => $newPermissions];
 
         $this->logActivity('updated', $role, $oldData, $newData, "Admin updated permissions for role: {$role->name}");
@@ -249,34 +245,9 @@ class AdminController extends Controller
     {
         $this->logActivity('viewed', null, null, null, 'Admin viewed activity logs');
 
-        $query = ActivityLog::with('user')->latest();
-
-        // Filter by date range
-        if ($request->from_date) {
-            $query->whereDate('created_at', '>=', $request->from_date);
-        }
-        if ($request->to_date) {
-            $query->whereDate('created_at', '<=', $request->to_date);
-        }
-
-        // Filter by action
-        if ($request->action) {
-            $query->where('action', $request->action);
-        }
-
-        // Filter by user
-        if ($request->user_id) {
-            $query->where('user_id', $request->user_id);
-        }
-
-        // Filter by IP address
-        if ($request->ip_address) {
-            $query->where('ip_address', 'like', '%' . $request->ip_address . '%');
-        }
-
-        $logs = $query->paginate(20);
+        $logs = ActivityLog::getFilteredLogs($request->all());
         $users = User::select('id', 'name')->get();
-        $actions = ActivityLog::distinct()->pluck('action');
+        $actions = ActivityLog::getDistinctActions();
 
         return view('admin.logs.index', compact('logs', 'users', 'actions'));
     }
@@ -294,26 +265,7 @@ class AdminController extends Controller
      */
     public function exportLogs(Request $request)
     {
-        $query = ActivityLog::with('user')->latest();
-
-        // Apply same filters as logs method
-        if ($request->from_date) {
-            $query->whereDate('created_at', '>=', $request->from_date);
-        }
-        if ($request->to_date) {
-            $query->whereDate('created_at', '<=', $request->to_date);
-        }
-        if ($request->action) {
-            $query->where('action', $request->action);
-        }
-        if ($request->user_id) {
-            $query->where('user_id', $request->user_id);
-        }
-        if ($request->ip_address) {
-            $query->where('ip_address', 'like', '%' . $request->ip_address . '%');
-        }
-
-        $logs = $query->get();
+        $logs = ActivityLog::getExportData($request->all());
 
         $filename = 'activity_logs_' . now()->format('Y-m-d_H-i-s') . '.csv';
         
@@ -325,26 +277,13 @@ class AdminController extends Controller
         $callback = function() use ($logs) {
             $file = fopen('php://output', 'w');
             
-            // CSV headers
             fputcsv($file, [
                 'ID', 'User', 'Action', 'Model Type', 'Model ID', 
                 'Description', 'IP Address', 'MAC Address', 'User Agent', 'Created At'
             ]);
 
-            // CSV data
             foreach ($logs as $log) {
-                fputcsv($file, [
-                    $log->id,
-                    $log->user ? $log->user->name : 'N/A',
-                    $log->action,
-                    $log->model_type,
-                    $log->model_id,
-                    $log->description,
-                    $log->ip_address,
-                    $log->mac_address,
-                    $log->user_agent,
-                    $log->created_at->format('Y-m-d H:i:s'),
-                ]);
+                fputcsv($file, $log->toCsvArray());
             }
 
             fclose($file);

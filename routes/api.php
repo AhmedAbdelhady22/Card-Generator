@@ -21,15 +21,13 @@ Route::prefix('auth')->group(function () {
 });
 
 
-Route::prefix('public')->group(function () {
-    Route::get('/card/{slug}', [PublicController::class, 'displayCard']);
-});
 
 
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
+        return request()->user();
     });
 
     Route::prefix('user')->group(function () {
@@ -49,7 +47,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{card}', [CardController::class, 'destroy']); 
     });
 
-        Route::get('/public/card/{card:slug}', [PublicController::class, 'showCard']);
 
         Route::prefix('activities')->group(function () {
         Route::get('/my-activities', [ActivityLogController::class, 'myActivities']);
