@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Spatie\Browsershot\Browsershot;
 
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -276,7 +277,6 @@ private function generateQrCode(Card $card){
         $cardUrl = url("/api/public/card/{$card->slug}");
         Log::info("🔄 Generating QR code for card {$card->id} with URL: {$cardUrl}");
         
-        // ✅ Generate QR code content
         $qrCodeContent = QrCode::format('svg')
             ->size(300)
             ->margin(2)
@@ -284,17 +284,13 @@ private function generateQrCode(Card $card){
         
         Log::info("✅ QR code generated: " . strlen($qrCodeContent) . " bytes");
         
-        // ✅ Create filename
         $filename = "qr-codes/card-{$card->id}.svg";
         
-        // ✅ Use Laravel Storage for proper path handling
         Storage::disk('public')->makeDirectory('qr-codes');
         
-        // ✅ Save QR code
         $saved = Storage::disk('public')->put($filename, $qrCodeContent);
         
         if ($saved) {
-            // ✅ Update card record
             $card->update(['qr_code' => $filename]);
             Log::info("✅ QR code saved successfully: {$filename}");
         } else {
@@ -310,18 +306,17 @@ private function generateQrCode(Card $card){
 /**
  * Generate and download PDF for a business card
  */
-public function downloadPdf($cardId)
+public function downloadPdf($id)
 {
     // Find the card and ensure it belongs to the authenticated user
-    $card = Card::where('id', $cardId)
-                ->where('user_id', Auth::id())
-                ->first();
+    $card = Card::findOrFail($id);
 
-    if (!$card) {
+    // Add authorization check
+    if ($card->user_id !== Auth::id()) {
         if (request()->expectsJson()) {
-            return $this->errorResponse('Card not found or unauthorized access', 404);
+            return $this->errorResponse('Unauthorized access', 403);
         }
-        return redirect()->route('cards.index')->with('error', 'Card not found or unauthorized access.');
+        return redirect()->route('cards.index')->with('error', 'Unauthorized access.');
     }
 
     try {
@@ -334,28 +329,27 @@ public function downloadPdf($cardId)
             'User generated PDF for card: ' . $card->name
         );
 
-        // Set longer timeout for PDF generation
-        ini_set('max_execution_time', 120);
+        $html = view('cards.pdf', compact('card'))->render();
 
         // Generate PDF from the card data
-        $pdf = Pdf::loadView('cards.pdf', compact('card'))
-                  ->setPaper('a4', 'portrait')
-                  ->setOptions([
-                      'isHtml5ParserEnabled' => true,
-                      'isRemoteEnabled' => false, // Disable remote content for security
-                      'defaultFont' => 'DejaVu Sans', // Use a font that supports Unicode
-                      'dpi' => 150,
-                      'debugPng' => false,
-                      'debugKeepTemp' => false,
-                      'debugCss' => false,
-                      'enable_php' => true
-                  ]);
+        $pdf = Browsershot::html($html)
+            ->format('A4')
+            ->margins(10, 10, 10, 10)
+            ->showBackground()
+            ->waitUntilNetworkIdle()
+            ->timeout(60) // Add timeout
+            ->setOption('--disable-web-security', true) // For local assets
+            ->setOption('--no-sandbox', true) // Add this for better compatibility
+            ->setOption('--disable-setuid-sandbox', true)
+            ->pdf();
 
         // Generate filename
         $filename = Str::slug($card->name . '-' . $card->company) . '-business-card.pdf';
 
-        return $pdf->download($filename);
-
+        return response($pdf)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+            
     } catch (\Exception $e) {
         Log::error("PDF generation failed for card {$card->id}: " . $e->getMessage());
         Log::error("Stack trace: " . $e->getTraceAsString());
@@ -371,18 +365,17 @@ public function downloadPdf($cardId)
 /**
  * Preview PDF for a business card
  */
-public function previewPdf($cardId)
+public function previewPdf($id)
 {
     // Find the card and ensure it belongs to the authenticated user
-    $card = Card::where('id', $cardId)
-                ->where('user_id', Auth::id())
-                ->first();
+    $card = Card::findOrFail($id);
 
-    if (!$card) {
+    // Add authorization check
+    if ($card->user_id !== Auth::id()) {
         if (request()->expectsJson()) {
-            return $this->errorResponse('Card not found or unauthorized access', 404);
+            return $this->errorResponse('Unauthorized access', 403);
         }
-        return redirect()->route('cards.index')->with('error', 'Card not found or unauthorized access.');
+        return redirect()->route('cards.index')->with('error', 'Unauthorized access.');
     }
 
     try {
@@ -395,24 +388,21 @@ public function previewPdf($cardId)
             'User previewed PDF for card: ' . $card->name
         );
 
-        // Set longer timeout for PDF generation
-        ini_set('max_execution_time', 120);
+        $html = view('cards.pdf', compact('card'))->render();
 
-        // Generate PDF and stream it to browser
-        $pdf = Pdf::loadView('cards.pdf', compact('card'))
-                  ->setPaper('a4', 'portrait')
-                  ->setOptions([
-                      'isHtml5ParserEnabled' => true,
-                      'isRemoteEnabled' => false, // Disable remote content for security
-                      'defaultFont' => 'DejaVu Sans', // Use a font that supports Unicode
-                      'dpi' => 150,
-                      'debugPng' => false,
-                      'debugKeepTemp' => false,
-                      'debugCss' => false,
-                      'enable_php' => true
-                  ]);
+                // Generate PDF from the card data
+                $pdf = Browsershot::html($html)
+                    ->format('A4')
+                    ->margins(10, 10, 10, 10)
+                    ->showBackground()
+                    ->waitUntilNetworkIdle()
+                    ->timeout(60) // Add timeout
+                    ->setOption('--disable-web-security', true) // For local assets
+                    ->pdf();
 
-        return $pdf->stream('business-card-preview.pdf');
+            return response($pdf)
+                        ->header('Content-Type', 'application/pdf')
+                        ->header('Content-Disposition', 'inline; filename="card-preview.pdf"');
 
     } catch (\Exception $e) {
         Log::error("PDF preview failed for card {$card->id}: " . $e->getMessage());

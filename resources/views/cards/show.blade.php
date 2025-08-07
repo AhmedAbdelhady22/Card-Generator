@@ -28,7 +28,7 @@
                                     <h2 class="text-primary fw-bold mb-1">{{ $card->name }}</h2>
                                     <h5 class="text-secondary mb-0">{{ $card->company }}</h5>
                                     @if($card->position)
-                                        <p class="text-muted mb-0"><em>{{ $card->position }}</em></p>
+                                        <p class=""><em>{{ $card->position }}</em></p>
                                     @endif
                                 </div>
                             </div>
