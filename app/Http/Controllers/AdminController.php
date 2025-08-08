@@ -15,10 +15,10 @@ class AdminController extends Controller
 {
     public function __construct()
     {
-        $user = User::find(Auth::id());
         $this->middleware('auth');
-        $this->middleware(function ($request, $next) use ($user) {
-            if (!$user->isAdmin()) {
+        $this->middleware(function ($request, $next) {
+            $user = User::find(Auth::user()->id);
+            if (!$user || !$user->isAdmin()) {
                 abort(403, 'Unauthorized access');
             }
             return $next($request);

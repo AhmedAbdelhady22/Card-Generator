@@ -1,3 +1,4 @@
+/* Replace the existing cards index styles with this updated version */
 
 /* Business Card Preview Styles */
 .business-card-preview {
@@ -48,14 +49,180 @@
    CARDS INDEX PAGE ENHANCED STYLES
    ============================================ */
 
-/* Enhanced Button Groups for Cards Index */
-.cards-index .btn-group .btn {
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
+/* Remove the red background from general card class */
+.card {
+    background-color: white !important;
 }
 
+/* Custom card styling for cards index */
+.cards-index .custom-card {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    min-height: 450px; /* Increased height for better layout */
+}
+
+.cards-index .custom-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+    border-color: #667eea;
+}
+
+/* Card Body Layout - Fixed */
+.cards-index .card-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 420px;
+    padding: 24px;
+    position: relative;
+}
+
+/* Content area that grows */
+.cards-index .flex-grow-1 {
+    flex: 1;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header section with logo and text - FIXED LAYOUT */
+.cards-index .card-header {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 16px;
+}
+
+/* Logo container - fixed size */
+.cards-index .logo-container,
+.cards-index .logo-placeholder {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+}
+
+.cards-index .logo-container img {
+    width: 80px !important;
+    height: 80px !important;
+    object-fit: cover;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cards-index .logo-placeholder .rounded-circle {
+    width: 80px !important;
+    height: 80px !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Text content area - grows to fill space */
+.cards-index .text-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 80px;
+}
+
+/* Card title and subtitle */
+.cards-index .card-title {
+    color: #2c3e50;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.cards-index .card-subtitle {
+    color: #667eea !important;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    line-height: 1.3;
+}
+
+/* Position badge */
+.cards-index .position-badge {
+    margin: 16px 0 20px 0;
+}
+
+.cards-index .position-badge .badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border-radius: 20px;
+    font-weight: 500;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    display: inline-block;
+}
+
+/* Contact info section */
+.cards-index .contact-info {
+    margin-top: auto;
+    padding-top: 16px;
+}
+
+.cards-index .contact-item-mini {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.cards-index .contact-item-mini i {
+    width: 20px;
+    text-align: center;
+    margin-right: 8px;
+    font-size: 0.9rem;
+}
+
+/* Fixed Card Actions Positioning */
+.card-actions-fixed {
+    background: rgba(248, 249, 250, 0.95);
+    backdrop-filter: blur(5px);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px -8px -8px -8px;
+    border-top: 1px solid #e9ecef !important;
+    position: relative;
+    z-index: 2;
+    min-height: 70px;
+}
+
+/* Action buttons container */
+.card-actions-fixed .d-flex {
+    flex-wrap: nowrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Button Groups */
+.cards-index .btn-group {
+    flex-wrap: nowrap;
+    gap: 2px;
+}
+
+.cards-index .btn-group .btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+    white-space: nowrap;
+    min-width: auto;
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    margin: 0 1px;
+}
+
+/* Button Colors */
 .cards-index .btn-outline-primary {
     border-color: #667eea;
     color: #667eea;
@@ -64,7 +231,8 @@
 .cards-index .btn-outline-primary:hover {
     background: #667eea;
     border-color: #667eea;
-    transform: scale(1.05);
+    color: white;
+    transform: scale(1.02);
 }
 
 .cards-index .btn-outline-secondary {
@@ -75,7 +243,8 @@
 .cards-index .btn-outline-secondary:hover {
     background: #6c757d;
     border-color: #6c757d;
-    transform: scale(1.05);
+    color: white;
+    transform: scale(1.02);
 }
 
 .cards-index .btn-outline-success {
@@ -86,7 +255,20 @@
 .cards-index .btn-outline-success:hover {
     background: #28a745;
     border-color: #28a745;
-    transform: scale(1.05);
+    color: white;
+    transform: scale(1.02);
+}
+
+.cards-index .btn-outline-warning {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+.cards-index .btn-outline-warning:hover {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+    transform: scale(1.02);
 }
 
 .cards-index .btn-outline-danger {
@@ -97,57 +279,125 @@
 .cards-index .btn-outline-danger:hover {
     background: #dc3545;
     border-color: #dc3545;
+    color: white;
+    transform: scale(1.02);
+}
+
+/* QR Code styling */
+.qr-code-mini {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.qr-code-mini .qr-container {
+    position: relative;
+    display: inline-block;
+}
+
+.qr-code-mini .qr-mini {
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+}
+
+.qr-code-mini .qr-container:hover .qr-mini {
+    border-color: #667eea;
     transform: scale(1.05);
 }
 
-/* Enhanced Dropdown Menu for Cards Index */
+.qr-code-mini .qr-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 6px;
+}
+
+.qr-code-mini:hover .qr-overlay {
+    opacity: 1;
+}
+
+/* QR placeholder styling */
+.qr-code-mini .bg-light {
+    border: 2px dashed #dee2e6 !important;
+    transition: all 0.3s ease;
+}
+
+.qr-code-mini:hover .bg-light {
+    border-color: #667eea !important;
+    background-color: #f8f9fa !important;
+}
+
+/* Dropdown Menu */
 .cards-index .dropdown-menu {
     border-radius: 10px;
     border: none;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    padding: 10px 0;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    padding: 8px 0;
+    min-width: 160px;
 }
 
 .cards-index .dropdown-item {
-    border-radius: 8px;
-    margin: 2px 10px;
-    padding: 10px 15px;
+    border-radius: 6px;
+    margin: 2px 8px;
+    padding: 8px 12px;
     transition: all 0.2s ease;
+    font-size: 0.85rem;
 }
 
 .cards-index .dropdown-item:hover {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    transform: translateX(5px);
+    transform: translateX(3px);
 }
 
-/* Enhanced QR Mini for Cards Index */
-.cards-index .qr-mini {
-    border: 2px solid #e9ecef;
-    transition: all 0.3s ease;
+.cards-index .dropdown-item.disabled {
+    color: #6c757d;
+    pointer-events: none;
+    background-color: transparent;
 }
 
-.cards-index .qr-container:hover .qr-mini {
-    border-color: #667eea;
+/* Disabled state styling */
+.cards-index .btn.disabled,
+.cards-index .btn:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: not-allowed;
 }
 
-/* Enhanced Create New Card Button */
-.cards-index .btn-primary.btn-lg {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    padding: 12px 24px;
-    border-radius: 25px;
-    font-weight: 600;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    transition: all 0.3s ease;
+/* Force button visibility */
+.cards-index .btn-group .btn,
+.cards-index .btn-group form,
+.cards-index .btn-group .dropdown {
+    display: inline-block !important;
+    visibility: visible !important;
 }
 
-.cards-index .btn-primary.btn-lg:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+/* Enhanced Custom Card Styling Override */
+.cards-index .custom-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 15px 15px 0 0;
 }
 
-/* Enhanced Alert Styles for Cards Index */
+/* Inactive card overlay */
+.cards-index .custom-card .position-absolute {
+    border-radius: 15px;
+}
+
+/* Enhanced Alert Styles */
 .cards-index .alert {
     border-radius: 12px;
     border: none;
@@ -167,38 +417,57 @@
     border-left: 4px solid #dc3545;
 }
 
-/* Enhanced Position Badge for Cards Index */
-.cards-index .position-badge .badge {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    color: white !important;
+/* Enhanced Create New Card Button */
+.cards-index .btn-primary.btn-lg {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 12px 24px;
     border-radius: 25px;
-    font-weight: 500;
-    padding: 8px 16px;
-    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
 }
 
-/* Enhanced Card Titles for Cards Index */
-.cards-index .card-title {
-    color: #2c3e50;
-    font-size: 1.25rem;
+.cards-index .btn-primary.btn-lg:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
-.cards-index .card-subtitle {
-    color: #667eea !important;
-    font-size: 1rem;
-}
-
-/* Enhanced Custom Card Styling Override */
-.cards-index .custom-card::before {
-    background: linear-gradient(90deg, #667eea, #764ba2);
-}
-
-.cards-index .logo-placeholder .bg-gradient {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-}
-
-/* Enhanced Empty State for Cards Index */
-.cards-index .empty-state:hover {
-    border-color: #667eea;
-    background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .cards-index .btn-group .btn {
+        font-size: 0.65rem;
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .cards-index .btn-group .btn i {
+        margin-right: 0.2rem;
+    }
+    
+    .card-actions-fixed {
+        padding: 12px;
+    }
+    
+    .card-actions-fixed .d-flex {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .cards-index .custom-card {
+        min-height: 400px;
+    }
+    
+    .cards-index .logo-container img,
+    .cards-index .logo-placeholder .rounded-circle {
+        width: 60px !important;
+        height: 60px !important;
+    }
+    
+    .cards-index .card-title {
+        font-size: 1.1rem;
+    }
+    
+    .cards-index .card-subtitle {
+        font-size: 0.9rem;
+    }
 }

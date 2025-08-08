@@ -40,101 +40,166 @@
     <div class="row g-4">
         @forelse($cards ?? [] as $card)
             <div class="col-lg-6 col-lg-4 mb-4">
-                <div class="card custom-card h-100 border-0 shadow-sm">
-                    <div class="card-body p-4">
-                        <div class="d-flex align-items-center mb-3">
-                            @if($card->logo)
-                                <div class="logo-container  me-3">
-                                    <img src="{{ asset('storage/' . $card->logo) }}" alt="Logo" 
-                                         class=" rounded-circle shadow-sm" 
-                                         style="width: 100px; height:100px; object-fit: cover;">
-                                </div>
-                            @else
-                                <div class="logo-placeholder me-3">
-                                    <div class="rounded-circle bg-gradient bg-primary d-flex align-items-center justify-content-center" 
-                                         style="width: 100px; height: 100px;">
-                                        <i class="fas fa-user text-white fs-4"></i>
-                                    </div>
-                                </div>
-                            @endif
-                            <div class="flex-grow-1">
-                                <h5 class="card-title mb-1 fw-bold">{{ $card->name ?? 'Sample Card' }}</h5>
-                                <h6 class="card-subtitle text-primary fw-semibold">{{ $card->company ?? 'Company Name' }}</h6>
-                            </div>
+                <div class="card custom-card h-100 border-0 shadow-sm {{ !$card->is_active ? 'opacity-75' : '' }}">
+                    <!-- Add inactive overlay if needed -->
+                    @if(!$card->is_active)
+                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+                             style="background: rgba(0,0,0,0.1); z-index: 1; border-radius: 0.375rem;">
+                            <span class="badge bg-secondary fs-6 px-3 py-2">
+                                <i class="fas fa-pause me-1"></i>Inactive
+                            </span>
                         </div>
-                        
-                        <div class="card-info mb-4">
+                    @endif
+                    
+                    <div class="card-body p-4 d-flex flex-column">
+                        <!-- Card Content - This will expand to fill available space -->
+                        <div class="flex-grow-1">
+                            <!-- Header section with logo and text -->
+                            <div class="card-header">
+                                @if($card->logo)
+                                    <div class="logo-container">
+                                        <img src="{{ asset('storage/' . $card->logo) }}" alt="Logo">
+                                    </div>
+                                @else
+                                    <div class="logo-placeholder">
+                                        <div class="rounded-circle">
+                                            <i class="fas fa-user text-white fs-4"></i>
+                                        </div>
+                                    </div>
+                                @endif
+                                
+                                <div class="text-content">
+                                    <h5 class="card-title">{{ $card->name ?? 'Sample Card' }}</h5>
+                                    <h6 class="card-subtitle">{{ $card->company ?? 'Company Name' }}</h6>
+                                </div>
+                            </div>
+                            
+                            <!-- Position Badge -->
                             @if($card->position)
-                                <div class="position-badge mb-3">
-                                    <span class="badge bg-light text-dark fs-6 px-3 py-2">
+                                <div class="position-badge">
+                                    <span class="badge">
                                         <i class="fas fa-briefcase me-1"></i>{{ $card->position }}
                                     </span>
                                 </div>
                             @endif
                             
+                            <!-- Contact Info Section -->
                             <div class="contact-info">
-                                <div class="contact-item-mini mb-2">
-                                    <i class="fas fa-envelope text-primary me-2"></i>
+                                <div class="contact-item-mini">
+                                    <i class="fas fa-envelope text-primary"></i>
                                     <span class="text-muted">{{ $card->email ?? 'email@example.com' }}</span>
                                 </div>
                                 
                                 @if($card->phone)
-                                    <div class="contact-item-mini mb-2">
-                                        <i class="fas fa-phone text-success me-2"></i>
+                                    <div class="contact-item-mini">
+                                        <i class="fas fa-phone text-success"></i>
                                         <span class="text-muted">{{ $card->phone }}</span>
                                     </div>
                                 @endif
                                 
                                 @if($card->mobile)
-                                    <div class="contact-item-mini mb-2">
-                                        <i class="fas fa-mobile-alt text-info me-2"></i>
+                                    <div class="contact-item-mini">
+                                        <i class="fas fa-mobile-alt text-info"></i>
                                         <span class="text-muted">{{ $card->mobile }}</span>
                                     </div>
                                 @endif
                             </div>
                         </div>
                         
-                        <div class="d-flex justify-content-between align-items-center mt-auto">
-                            <div class="btn-group shadow-sm" role="group">
-                                <a href="{{ route('cards.show', $card->id) }}" class="btn btn-outline-primary btn-sm ">
-                                    <i class="fas fa-eye me-1"></i>View
-                                </a>
-                                <a href="{{ route('cards.edit', $card->id) }}" class="btn btn-outline-secondary btn-sm">
-                                    <i class="fas fa-edit me-1"></i>Edit
-                                </a>
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-outline-success btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-file-pdf me-1"></i>PDF
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item mr-2" href="{{ route('cards.pdf.preview', $card->id) }}" target="_blank">
-                                            <i class="fas fa-eye me-2"></i>Preview PDF
-                                        </a></li>
-                                        <li><a class="dropdown-item" href="{{ route('cards.pdf', $card->id) }}">
-                                            <i class="fas fa-download me-2"></i>Download PDF
-                                        </a></li>
-                                    </ul>
-                                </div>
-                                <form action="{{ route('cards.destroy', $card->id) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-outline-danger btn-sm" 
-                                            onclick="console.log('Form action:', this.form.action); return confirm('Are you sure you want to delete this card?')">
-                                        <i class="fas fa-trash me-1"></i>Delete
-                                    </button>
-                                </form>
-                            </div>
-                            @if($card->qr_code)
-                                <div class="qr-code-mini">
-                                    <div class="qr-container" data-bs-toggle="tooltip" title="Scan QR Code">
-                                        <img src="{{ asset('storage/' . $card->qr_code) }}" alt="QR Code" 
-                                             class="qr-mini rounded shadow-sm" style="width: 45px; height: 45px;">
-                                        <div class="qr-overlay">
-                                            <i class="fas fa-qrcode text-white"></i>
-                                        </div>
+                        <!-- Fixed Position Buttons Section - Always at bottom -->
+                        <div class="card-actions-fixed mt-auto pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                <!-- Action Buttons -->
+                                <div class="btn-group shadow-sm mb-2 mb-lg-0" role="group">
+                                    <a href="{{ route('cards.show', $card->id) }}" 
+                                       class="btn btn-outline-primary btn-sm {{ !$card->is_active ? 'disabled' : '' }}">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </a>
+                                    <a href="{{ route('cards.edit', $card->id) }}" 
+                                       class="btn btn-outline-secondary btn-sm {{ !$card->is_active ? 'disabled' : '' }}">
+                                        <i class="fas fa-edit me-1"></i>Edit
+                                    </a>
+                                    
+                                    <!-- Status Toggle Button (Always available) -->
+                                    <form action="{{ route('cards.toggle-status', $card->id) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn-outline-{{ $card->is_active ? 'warning' : 'success' }} btn-sm" 
+                                                onclick="return confirm('Are you sure you want to {{ $card->is_active ? 'deactivate' : 'activate' }} this card?')">
+                                            @if($card->is_active)
+                                                <i class="fas fa-pause me-1"></i>Deactivate
+                                            @else
+                                                <i class="fas fa-play me-1"></i>Activate
+                                            @endif
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- PDF actions - show always but disabled for inactive cards -->
+                                    <div class="btn-group" role="group">
+                                        <button type="button" 
+                                                class="btn btn-outline-success btn-sm dropdown-toggle {{ !$card->is_active ? 'disabled' : '' }}" 
+                                                data-bs-toggle="dropdown" 
+                                                aria-expanded="false"
+                                                {{ !$card->is_active ? 'disabled' : '' }}>
+                                            <i class="fas fa-file-pdf me-1"></i>PDF
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item {{ !$card->is_active ? 'disabled' : '' }}" 
+                                                   href="{{ $card->is_active ? route('cards.pdf.preview', $card->id) : '#' }}" 
+                                                   {{ $card->is_active ? 'target="_blank"' : '' }}>
+                                                    <i class="fas fa-eye me-2"></i>Preview PDF
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item {{ !$card->is_active ? 'disabled' : '' }}" 
+                                                   href="{{ $card->is_active ? route('cards.pdf', $card->id) : '#' }}">
+                                                    <i class="fas fa-download me-2"></i>Download PDF
+                                                </a>
+                                            </li>
+                                        </ul>
                                     </div>
+                                    
+                                    <!-- Delete button - show always but disabled for inactive cards -->
+                                    <form action="{{ route('cards.destroy', $card->id) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" 
+                                                class="btn btn-outline-danger btn-sm {{ !$card->is_active ? 'disabled' : '' }}" 
+                                                onclick="return {{ $card->is_active ? 'confirm(\'Are you sure you want to delete this card?\')' : 'false' }}"
+                                                {{ !$card->is_active ? 'disabled' : '' }}>
+                                            <i class="fas fa-trash me-1"></i>Delete
+                                        </button>
+                                    </form>
                                 </div>
-                            @endif
+                                
+                                <!-- Status Badge and QR Code - Always show -->
+                                <div class="status-badge-container d-flex align-items-center">
+                                    <!-- Always show QR code if it exists -->
+                                    @if($card->qr_code)
+                                        <div class="qr-code-mini">
+                                            <div class="qr-container" data-bs-toggle="tooltip" title="QR Code{{ !$card->is_active ? ' (Inactive)' : '' }}">
+                                                <img src="{{ asset('storage/' . $card->qr_code) }}" alt="QR Code" 
+                                                     class="qr-mini rounded shadow-sm {{ !$card->is_active ? 'opacity-50' : '' }}" 
+                                                     style="width: 45px; height: 45px; object-fit: cover;">
+                                                <div class="qr-overlay">
+                                                    <i class="fas fa-qrcode text-white"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <!-- Show placeholder if no QR code -->
+                                        <div class="qr-code-mini">
+                                            <div class="qr-container" data-bs-toggle="tooltip" title="No QR Code">
+                                                <div class="bg-light border rounded d-flex align-items-center justify-content-center"
+                                                     style="width: 45px; height: 45px;">
+                                                    <i class="fas fa-qrcode text-muted"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

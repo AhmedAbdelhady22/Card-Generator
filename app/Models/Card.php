@@ -116,6 +116,11 @@ class Card extends Model
         return $query->where('is_active', true);
     }
 
+    public function scopeInactive($query)
+    {
+    return $query->where('is_active', false);
+    }
+
     /**
      * Scope for cards by user
      */
@@ -238,5 +243,27 @@ class Card extends Model
     public function scopeWithUser($query)
     {
         return $query->with('user:id,name,email');
+    }
+
+    public function generatePdf()
+    {
+        $pdfData = $this->getPdfData();
+        $html = view('cards.pdf', $pdfData)->render();
+
+        $pdf = \Spatie\Browsershot\Browsershot::html($html)
+            ->format('A4')
+            ->margins(10, 10, 10, 10)
+            ->showBackground()
+            ->waitUntilNetworkIdle()
+            ->timeout(60)
+            ->setOption('--disable-web-security', true)
+            ->pdf();
+
+        return $pdf;
+    }
+
+    public function getPdfFilename(): string
+    {
+        return \Illuminate\Support\Str::slug($this->name . '-' . $this->company) . '-business-card.pdf';
     }
 }

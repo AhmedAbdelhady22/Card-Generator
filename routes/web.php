@@ -71,6 +71,9 @@ Route::delete('/cards/{card}/delete', [CardController::class, 'destroy'])->name(
 Route::get('/cards/{card}/pdf', [CardController::class, 'downloadPdf'])->name('cards.pdf')->middleware('auth');
 Route::get('/cards/{card}/pdf/preview', [CardController::class, 'previewPdf'])->name('cards.pdf.preview')->middleware('auth');
 
+// Toggle card status
+Route::patch('/cards/{card}/toggle-status', [CardController::class, 'toggleStatus'])->name('cards.toggle-status')->middleware('auth');
+
 // Admin Routes
 Route::prefix('admin')->name('admin.')->group(function() {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');

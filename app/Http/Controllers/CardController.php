@@ -15,8 +15,7 @@ class CardController extends Controller
     public function index(Request $request)
     {
         $cards = Card::byUser(Auth::id())
-            ->active()
-            ->select(['id', 'name', 'company', 'position', 'email', 'phone', 'mobile', 'address', 'company_address', 'logo', 'qr_code', 'slug'])
+            ->select(['id', 'name', 'company', 'position', 'email', 'phone', 'mobile', 'address', 'company_address', 'logo', 'qr_code', 'slug', 'is_active'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -165,6 +164,57 @@ class CardController extends Controller
         }
     }
 
+    public function toggleStatus($cardId)
+    {
+        // Find card by ID or slug
+        $card = Card::where('id', $cardId)
+                    ->orWhere('slug', $cardId)
+                    ->where('user_id', Auth::id())
+                    ->first();
+
+        if (!$card) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Card not found'
+                ], 404);
+            }
+            return redirect()->back()->with('error', 'Card not found');
+        }
+
+        try {
+            $card->is_active = !$card->is_active;
+            $card->save();
+
+            $status = $card->is_active ? 'activated' : 'deactivated';
+            $this->logActivity('card_status_changed', $card, null, ['status' => $status], "Card {$status}: {$card->name}");
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Card {$status} successfully!",
+                    'is_active' => $card->is_active
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Card {$status} successfully!");
+
+        } catch (\Exception $e) {
+            Log::error("Failed to toggle card status for card {$card->id}: " . $e->getMessage());
+            
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update card status'
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Failed to update card status');
+        }
+
+
+    }
+
     public function downloadPdf($id)
     {
         $card = Card::findOrFail($id);
@@ -197,6 +247,28 @@ class CardController extends Controller
         } catch (\Exception $e) {
             Log::error("PDF generation failed for card {$card->id}: " . $e->getMessage());
             return $this->errorResponse('Failed to generate PDF', 500);
+        }
+    }
+
+    public function previewPdf($id)
+    {
+        $card = Card::findOrFail($id);
+
+        if ($card->user_id !== Auth::id()) {
+            return $this->errorResponse('Unauthorized access', 403);
+        }
+
+        try {
+            $pdf = $card->generatePdf();
+            $filename = $card->getPdfFilename();
+
+            return response($pdf)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="' . $filename . '"');
+                
+        } catch (\Exception $e) {
+            Log::error("PDF preview failed for card {$card->id}: " . $e->getMessage());
+            return $this->errorResponse('Failed to preview PDF', 500);
         }
     }
 
