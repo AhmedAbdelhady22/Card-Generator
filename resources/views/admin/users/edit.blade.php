@@ -145,6 +145,9 @@
 
                         <div class="d-flex justify-content-end gap-2">
                             <a href="{{ route('admin.users') }}" class="btn btn-secondary">Cancel</a>
+                            <a href="{{ route('admin.users.permissions', $user) }}" class="btn btn-info">
+                                <i class="fas fa-shield-alt"></i> Manage Permissions
+                            </a>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Update User
                             </button>

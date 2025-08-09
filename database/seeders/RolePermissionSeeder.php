@@ -17,21 +17,21 @@ class RolePermissionSeeder extends Seeder
     {
         // Create permissions
         $permissions = [
-            ['name' => 'View Cards', 'slug' => 'cards.view', 'description' => 'View business cards'],
-            ['name' => 'Create Cards', 'slug' => 'cards.create', 'description' => 'Create new business cards'],
-            ['name' => 'Edit Cards', 'slug' => 'cards.edit', 'description' => 'Edit business cards'],
-            ['name' => 'Delete Cards', 'slug' => 'cards.delete', 'description' => 'Delete business cards'],
+            // Card permissions
+            ['name' => 'view_cards', 'slug' => 'view_cards', 'description' => 'View business cards'],
+            ['name' => 'create_cards', 'slug' => 'create_cards', 'description' => 'Create new business cards'],
+            ['name' => 'edit_cards', 'slug' => 'edit_cards', 'description' => 'Edit business cards'],
+            ['name' => 'delete_cards', 'slug' => 'delete_cards', 'description' => 'Delete business cards'],
+            ['name' => 'download_pdf', 'slug' => 'download_pdf', 'description' => 'Download PDF versions of cards'],
             
-            ['name' => 'View Users', 'slug' => 'users.view', 'description' => 'View users'],
-            ['name' => 'Create Users', 'slug' => 'users.create', 'description' => 'Create new users'],
-            ['name' => 'Edit Users', 'slug' => 'users.edit', 'description' => 'Edit users'],
-            ['name' => 'Delete Users', 'slug' => 'users.delete', 'description' => 'Delete users'],
+            // User management permissions
+            ['name' => 'manage_users', 'slug' => 'manage_users', 'description' => 'Manage user accounts'],
+            ['name' => 'manage_permissions', 'slug' => 'manage_permissions', 'description' => 'Manage user permissions and roles'],
             
-            ['name' => 'View Activity Logs', 'slug' => 'logs.view', 'description' => 'View activity logs'],
-            ['name' => 'Manage Permissions', 'slug' => 'permissions.manage', 'description' => 'Manage user permissions'],
-            
-            ['name' => 'View All Cards', 'slug' => 'cards.view.all', 'description' => 'View all users cards'],
-            ['name' => 'Manage System', 'slug' => 'system.manage', 'description' => 'Full system management'],
+            // Admin panel permissions
+            ['name' => 'view_admin_panel', 'slug' => 'view_admin_panel', 'description' => 'Access admin panel'],
+            ['name' => 'view_activity_logs', 'slug' => 'view_activity_logs', 'description' => 'View system activity logs'],
+            ['name' => 'export_data', 'slug' => 'export_data', 'description' => 'Export system data'],
         ];
 
         foreach ($permissions as $permission) {
@@ -53,11 +53,12 @@ class RolePermissionSeeder extends Seeder
         $adminRole->permissions()->sync(Permission::all()->pluck('id'));
 
         // Assign basic permissions to user role
-        $userPermissions = Permission::whereIn('slug', [
-            'cards.view',
-            'cards.create',
-            'cards.edit',
-            'cards.delete'
+        $userPermissions = Permission::whereIn('name', [
+            'view_cards',
+            'create_cards', 
+            'edit_cards',
+            'delete_cards',
+            'download_pdf'
         ])->pluck('id');
         
         $userRole->permissions()->sync($userPermissions);

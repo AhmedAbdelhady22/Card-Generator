@@ -17,8 +17,17 @@ class AdminController extends Controller
     {
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
-            $user = User::find(Auth::user()->id);
-            if (!$user || !$user->isAdmin()) {
+            /** @var User $user */
+            $user = Auth::user();
+            
+            // Check if user has any admin-related permissions
+            $hasAdminAccess = $user->hasPermissionCached('view_admin_panel') ||
+                            $user->hasPermissionCached('manage_users') ||
+                            $user->hasPermissionCached('manage_permissions') ||
+                            $user->hasPermissionCached('view_activity_logs') ||
+                            $user->isAdmin(); // Keep role-based check as fallback
+            
+            if (!$hasAdminAccess) {
                 abort(403, 'Unauthorized access');
             }
             return $next($request);
@@ -236,6 +245,51 @@ class AdminController extends Controller
         $this->logActivity('updated', $role, $oldData, $newData, "Admin updated permissions for role: {$role->name}");
 
         return back()->with('success', 'Role permissions updated successfully!');
+    }
+
+    /**
+     * Show user permissions management
+     */
+    public function userPermissions(User $user)
+    {
+        $this->logActivity('viewed', $user, null, null, "Admin viewed permissions for user: {$user->name}");
+
+        $user->load('role', 'userPermissions', 'deniedPermissions');
+        $allPermissions = Permission::all();
+        $rolePermissions = $user->role ? $user->role->permissions : collect();
+
+        return view('admin.users.permissions', compact('user', 'allPermissions', 'rolePermissions'));
+    }
+
+    /**
+     * Update user permissions
+     */
+    public function updateUserPermissions(Request $request, User $user)
+    {
+        $request->validate([
+            'granted_permissions' => 'array',
+            'granted_permissions.*' => 'exists:permissions,id',
+            'denied_permissions' => 'array',
+            'denied_permissions.*' => 'exists:permissions,id',
+        ]);
+
+        $oldData = [
+            'granted_permissions' => $user->userPermissions->pluck('id')->toArray(),
+            'denied_permissions' => $user->deniedPermissions->pluck('id')->toArray(),
+        ];
+
+        // Sync permissions
+        $user->syncUserPermissions($request->granted_permissions ?? []);
+        $user->syncDeniedPermissions($request->denied_permissions ?? []);
+
+        $newData = [
+            'granted_permissions' => $request->granted_permissions ?? [],
+            'denied_permissions' => $request->denied_permissions ?? [],
+        ];
+
+        $this->logActivity('updated', $user, $oldData, $newData, "Admin updated permissions for user: {$user->name}");
+
+        return back()->with('success', 'User permissions updated successfully!');
     }
 
     /**

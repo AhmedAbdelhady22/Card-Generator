@@ -192,12 +192,8 @@ function previewLogo(input) {
     if (input.files && input.files[0]) {
         const file = input.files[0];
         
-        // Debug: Log file information
-        console.log('File selected:', {
-            name: file.name,
-            size: file.size,
-            type: file.type
-        });
+        // File selected for upload
+        const file = files[0];
         
         const reader = new FileReader();
         

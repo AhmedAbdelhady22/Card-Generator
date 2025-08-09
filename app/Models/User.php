@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use App\Models\Role;
 use App\Models\Card;
 use App\Models\ActivityLog;
+use App\Models\Permission;
 
 class User extends Authenticatable
 {
@@ -89,14 +91,153 @@ class User extends Authenticatable
         return $this->hasMany(ActivityLog::class);
     }
 
+    /**
+     * Get the user's directly assigned permissions
+     */
+    public function userPermissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'user_permissions');
+    }
+
+    /**
+     * Get the user's denied permissions
+     */
+    public function deniedPermissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'user_denied_permissions');
+    }
+
     // Business logic
 
     /**
      * Check if user has a specific permission
+     * Priority: denied permissions > user permissions > role permissions
      */
     public function hasPermission(string $permission): bool
     {
+        // First check if this permission is explicitly denied for this user
+        if ($this->deniedPermissions()->where('name', $permission)->exists()) {
+            return false;
+        }
+
+        // Then check if this permission is explicitly granted to this user
+        if ($this->userPermissions()->where('name', $permission)->exists()) {
+            return true;
+        }
+
+        // Finally check role permissions
         return $this->role && $this->role->hasPermission($permission);
+    }
+
+    /**
+     * Check if user has a specific permission with caching
+     */
+    public function hasPermissionCached(string $permission): bool
+    {
+        // Load relationships if not already loaded
+        if (!$this->relationLoaded('role') || !$this->relationLoaded('userPermissions') || !$this->relationLoaded('deniedPermissions')) {
+            $this->load(['role.permissions', 'userPermissions', 'deniedPermissions']);
+        }
+        
+        return $this->hasPermission($permission);
+    }
+
+    /**
+     * Check if user has any of the given permissions
+     */
+    public function hasAnyPermissionCached(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermissionCached($permission)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Assign a permission directly to this user
+     */
+    public function assignPermission(string $permissionName): bool
+    {
+        $permission = Permission::where('name', $permissionName)->first();
+        if (!$permission) {
+            return false;
+        }
+
+        // Remove from denied permissions if it exists
+        $this->deniedPermissions()->detach($permission->id);
+        
+        // Add to user permissions
+        $this->userPermissions()->syncWithoutDetaching([$permission->id]);
+        
+        return true;
+    }
+
+    /**
+     * Deny a permission for this user
+     */
+    public function denyPermission(string $permissionName): bool
+    {
+        $permission = Permission::where('name', $permissionName)->first();
+        if (!$permission) {
+            return false;
+        }
+
+        // Remove from user permissions if it exists
+        $this->userPermissions()->detach($permission->id);
+        
+        // Add to denied permissions
+        $this->deniedPermissions()->syncWithoutDetaching([$permission->id]);
+        
+        return true;
+    }
+
+    /**
+     * Remove a specific permission (both granted and denied)
+     */
+    public function removePermission(string $permissionName): bool
+    {
+        $permission = Permission::where('name', $permissionName)->first();
+        if (!$permission) {
+            return false;
+        }
+
+        $this->userPermissions()->detach($permission->id);
+        $this->deniedPermissions()->detach($permission->id);
+        
+        return true;
+    }
+
+    /**
+     * Get all effective permissions for this user
+     */
+    public function getAllPermissions(): array
+    {
+        $rolePermissions = $this->role ? $this->role->permissions->pluck('name')->toArray() : [];
+        $userPermissions = $this->userPermissions->pluck('name')->toArray();
+        $deniedPermissions = $this->deniedPermissions->pluck('name')->toArray();
+
+        // Combine role and user permissions, then remove denied ones
+        $allPermissions = array_unique(array_merge($rolePermissions, $userPermissions));
+        
+        return array_diff($allPermissions, $deniedPermissions);
+    }
+
+    /**
+     * Sync user permissions (replace all current permissions with new ones)
+     */
+    public function syncUserPermissions(array $permissionIds): void
+    {
+        $this->userPermissions()->sync($permissionIds);
+    }
+
+    /**
+     * Sync denied permissions
+     */
+    public function syncDeniedPermissions(array $permissionIds): void
+    {
+        $this->deniedPermissions()->sync($permissionIds);
     }
 
     /**

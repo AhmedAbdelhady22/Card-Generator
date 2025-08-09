@@ -16,12 +16,14 @@
                             <i class="fas fa-tachometer-alt me-1"></i>Dashboard
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('cards.index') }}">
-                            <i class="fas fa-id-card me-1"></i>Cards
-                        </a>
-                    </li>
-                    @if(Auth::user()->role && Auth::user()->role->name === 'admin')
+                    @if(Auth::user()->hasPermissionCached('view_cards'))
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('cards.index') }}">
+                                <i class="fas fa-id-card me-1"></i>Cards
+                            </a>
+                        </li>
+                    @endif
+                    @if(Auth::user()->hasPermissionCached('view_admin_panel') || Auth::user()->hasPermissionCached('manage_users') || Auth::user()->hasPermissionCached('manage_permissions'))
                         <li class="nav-item">
                             <a class="nav-link text-danger" href="{{ route('admin.dashboard') }}">
                                 <i class="fas fa-user-shield me-1"></i>Admin Panel
@@ -44,18 +46,27 @@
                             <li><a class="dropdown-item" href="{{ route('dashboard') }}">
                                 <i class="fas fa-tachometer-alt me-1"></i>Dashboard
                             </a></li>
-                            @if(Auth::user()->role && Auth::user()->role->name === 'admin')
+                            @if(Auth::user()->hasPermissionCached('view_admin_panel') || Auth::user()->hasPermissionCached('manage_users') || Auth::user()->hasPermissionCached('manage_permissions'))
                                 <li><hr class="dropdown-divider"></li>
                                 <li class="dropdown-header">Admin Functions</li>
                                 <li><a class="dropdown-item" href="{{ route('admin.dashboard') }}">
                                     <i class="fas fa-user-shield me-1"></i>Admin Dashboard
                                 </a></li>
-                                <li><a class="dropdown-item" href="{{ route('admin.users') }}">
-                                    <i class="fas fa-users me-1"></i>Manage Users
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ route('admin.logs') }}">
-                                    <i class="fas fa-clipboard-list me-1"></i>Activity Logs
-                                </a></li>
+                                @if(Auth::user()->hasPermissionCached('manage_users'))
+                                    <li><a class="dropdown-item" href="{{ route('admin.users') }}">
+                                        <i class="fas fa-users me-1"></i>Manage Users
+                                    </a></li>
+                                @endif
+                                @if(Auth::user()->hasPermissionCached('manage_permissions'))
+                                    <li><a class="dropdown-item" href="{{ route('admin.permissions') }}">
+                                        <i class="fas fa-shield-alt me-1"></i>Manage Permissions
+                                    </a></li>
+                                @endif
+                                @if(Auth::user()->hasPermissionCached('view_activity_logs'))
+                                    <li><a class="dropdown-item" href="{{ route('admin.logs') }}">
+                                        <i class="fas fa-clipboard-list me-1"></i>Activity Logs
+                                    </a></li>
+                                @endif
                                 <li><hr class="dropdown-divider"></li>
                             @endif
                             <li>

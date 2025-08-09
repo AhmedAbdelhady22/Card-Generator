@@ -31,10 +31,10 @@ Route::get('/cards', [CardController::class, 'index'])->name('cards.index')->mid
 //show create card form
 Route::get('/cards/create', function () {
     return view('cards.create');
-})->name('cards.create')->middleware('auth');
+})->name('cards.create')->middleware(['auth', 'permission:create_cards']);
 
 //store new card
-Route::post('/cards', [CardController::class, 'store'])->name('cards.store')->middleware('auth');
+Route::post('/cards', [CardController::class, 'store'])->name('cards.store')->middleware(['auth', 'permission:create_cards']);
 
 //show all cards
 Route::get('/cards', [CardController::class, 'index'])->name('cards.index')->middleware('auth');
@@ -61,44 +61,48 @@ Route::get('/cards/{card}/edit', function ($cardId) {
     }
     
     return view('cards.edit', compact('card'));
-})->name('cards.edit')->middleware('auth');
-Route::put('/cards/{card}', [CardController::class, 'update'])->name('cards.update')->middleware('auth');
+})->name('cards.edit')->middleware(['auth', 'permission:edit_cards']);
+Route::put('/cards/{card}', [CardController::class, 'update'])->name('cards.update')->middleware(['auth', 'permission:edit_cards']);
 
 //delete card
-Route::delete('/cards/{card}/delete', [CardController::class, 'destroy'])->name('cards.destroy')->middleware('auth');
+Route::delete('/cards/{card}/delete', [CardController::class, 'destroy'])->name('cards.destroy')->middleware(['auth', 'permission:delete_cards']);
 
 // PDF generation routes
-Route::get('/cards/{card}/pdf', [CardController::class, 'downloadPdf'])->name('cards.pdf')->middleware('auth');
-Route::get('/cards/{card}/pdf/preview', [CardController::class, 'previewPdf'])->name('cards.pdf.preview')->middleware('auth');
+Route::get('/cards/{card}/pdf', [CardController::class, 'downloadPdf'])->name('cards.pdf')->middleware(['auth', 'permission:download_pdf']);
+Route::get('/cards/{card}/pdf/preview', [CardController::class, 'previewPdf'])->name('cards.pdf.preview')->middleware(['auth', 'permission:download_pdf']);
 
 // Toggle card status
 Route::patch('/cards/{card}/toggle-status', [CardController::class, 'toggleStatus'])->name('cards.toggle-status')->middleware('auth');
 
 // Admin Routes
-Route::prefix('admin')->name('admin.')->group(function() {
+Route::prefix('admin')->name('admin.')->middleware('auth')->group(function() {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     
-    // User Management
+    // User Management - temporarily remove permission middleware for testing
     Route::get('/users', [AdminController::class, 'users'])->name('users');
-    Route::get('/users/create', [AdminController::class, 'createUser'])->name('users.create');
-    Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store');
-    Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('users.edit');
-    Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
-    Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete');
-    Route::patch('/users/{user}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('users.toggle-status');
+    Route::get('/users/create', [AdminController::class, 'createUser'])->name('users.create')->middleware('permission:manage_users');
+    Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store')->middleware('permission:manage_users');
+    Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('users.edit')->middleware('permission:manage_users');
+    Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update')->middleware('permission:manage_users');
+    Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete')->middleware('permission:manage_users');
+    Route::patch('/users/{user}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('users.toggle-status')->middleware('permission:manage_users');
+    
+    // User Permission Management
+    Route::get('/users/{user}/permissions', [AdminController::class, 'userPermissions'])->name('users.permissions')->middleware('permission:manage_permissions');
+    Route::put('/users/{user}/permissions', [AdminController::class, 'updateUserPermissions'])->name('users.permissions.update')->middleware('permission:manage_permissions');
     
     // Card Management
-    Route::get('/cards', [AdminController::class, 'cards'])->name('cards');
-    Route::delete('/cards/{card}', [AdminController::class, 'deleteCard'])->name('cards.delete');
+    Route::get('/cards', [AdminController::class, 'cards'])->name('cards')->middleware('permission:manage_users');
+    Route::delete('/cards/{card}', [AdminController::class, 'deleteCard'])->name('cards.delete')->middleware('permission:manage_users');
     
     // Permission Management
-    Route::get('/permissions', [AdminController::class, 'permissions'])->name('permissions');
-    Route::put('/roles/{role}/permissions', [AdminController::class, 'updateRolePermissions'])->name('roles.permissions.update');
+    Route::get('/permissions', [AdminController::class, 'permissions'])->name('permissions')->middleware('permission:manage_permissions');
+    Route::put('/roles/{role}/permissions', [AdminController::class, 'updateRolePermissions'])->name('roles.permissions.update')->middleware('permission:manage_permissions');
     
     // Activity Logs
-    Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
-    Route::get('/logs/{log}', [AdminController::class, 'showLog'])->name('logs.show');
-    Route::get('/logs-export', [AdminController::class, 'exportLogs'])->name('logs.export');
+    Route::get('/logs', [AdminController::class, 'logs'])->name('logs')->middleware('permission:view_activity_logs');
+    Route::get('/logs/{log}', [AdminController::class, 'showLog'])->name('logs.show')->middleware('permission:view_activity_logs');
+    Route::get('/logs-export', [AdminController::class, 'exportLogs'])->name('logs.export')->middleware(['permission:view_activity_logs', 'permission:export_data']);
 });
 
 // Authentication Routes

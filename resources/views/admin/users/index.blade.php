@@ -97,8 +97,12 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-outline-primary">
+                                            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-outline-primary" title="Edit User">
                                                 <i class="fas fa-edit"></i>
+                                            </a>
+                                            
+                                            <a href="{{ route('admin.users.permissions', $user) }}" class="btn btn-outline-info" title="Manage Permissions">
+                                                <i class="fas fa-shield-alt"></i>
                                             </a>
                                             
                                             @if($user->id !== auth()->id())
