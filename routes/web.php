@@ -107,6 +107,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function() {
 
 // Authentication Routes
 
+// Public card view (no authentication required)
+Route::get('/card/{slug}', [App\Http\Controllers\PublicController::class, 'showCard'])->name('public.card.show');
+
 //login
 Route::get('/login', function () {
     return view('auth.login');

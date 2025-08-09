@@ -97,7 +97,7 @@ class Card extends Model
      */
     public function getPublicUrlAttribute(): string
     {
-        return url("/api/public/card/{$this->slug}");
+        return url("/card/{$this->slug}");
     }
     /**
      * Get the logo public URL

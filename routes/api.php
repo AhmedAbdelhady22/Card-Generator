@@ -15,6 +15,11 @@ Route::get('/test', function () {
     return response()->json(['message' => 'Routes are working!']);
 });
 
+// Public routes (no authentication required)
+Route::prefix('public')->group(function () {
+    Route::get('/card/{slug}', [PublicController::class, 'showCard'])->name('public.card.show');
+});
+
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
